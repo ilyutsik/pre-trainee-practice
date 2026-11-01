@@ -1,0 +1,2 @@
+Go is a programming language. Go is expressive, concise, clean, and efficient.
+Concurrency is a core idea in Go programming. Programming in Go is fun (its, it's).

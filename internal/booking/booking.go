@@ -27,14 +27,24 @@ type Reservation struct {
 	Cancelled bool
 }
 
-type Service struct {
-	rooms            map[string]string
-	reservations     map[string]Reservation
-	reservationOrder []string
+type RoomStore interface {
+	SaveRoom(r Room) error
+	GetRoom(id string) (Room, error)
 }
 
-func NewService() *Service {
-	return &Service{rooms: make(map[string]string), reservations: make(map[string]Reservation), reservationOrder: make([]string, 0, 15)}
+type ReservationStore interface {
+	Save(Reservation) error
+	Get(id string) (Reservation, error)
+	ListByRoom(roomID string) ([]Reservation, error)
+}
+
+type Service struct {
+	rooms        RoomStore
+	reservations ReservationStore
+}
+
+func NewService(rooms RoomStore, reservations ReservationStore) *Service {
+	return &Service{rooms, reservations}
 }
 
 func (s *Service) AddRoom(id, name string) error {
@@ -45,10 +55,16 @@ func (s *Service) AddRoom(id, name string) error {
 	if name == "" {
 		return fmt.Errorf("add room: name is required: %w", ErrInvalid)
 	}
-	if _, exist := s.rooms[id]; exist {
-		return fmt.Errorf("duplicate id %s: %w", id, ErrInvalid)
+	_, err := s.rooms.GetRoom(id)
+	if err == nil {
+		return fmt.Errorf("add room: duplicate id %s: %w", id, ErrInvalid)
 	}
-	s.rooms[id] = name
+	if !errors.Is(err, ErrNotFound) {
+		return fmt.Errorf("add room: %w", err)
+	}
+	if err := s.rooms.SaveRoom(Room{ID: id, Name: name}); err != nil {
+		return fmt.Errorf("add room: save room: %w", err)
+	}
 	return nil
 }
 
@@ -60,37 +76,49 @@ func (s *Service) Book(roomID string, start, end int) (Reservation, error) {
 	if !(0 <= start) || !(start < end) || !(end <= 24) {
 		return Reservation{}, fmt.Errorf("book room: invalid time interval %d-%d %w", start, end, ErrInvalid)
 	}
-	if _, exist := s.rooms[roomID]; !exist {
-		return Reservation{}, fmt.Errorf("book room: room %s not found %w", roomID, ErrNotFound)
+	_, err := s.rooms.GetRoom(roomID)
+	if err != nil {
+		return Reservation{}, fmt.Errorf("book room: get room %s: %w", roomID, err)
 	}
-	for _, id := range s.reservationOrder {
-		reservation := s.reservations[id]
-		if reservation.RoomID == roomID && !reservation.Cancelled {
+	list, err := s.reservations.ListByRoom(roomID)
+	if err != nil {
+		return Reservation{}, fmt.Errorf("book room: %w", err)
+	}
+	for _, reservation := range list {
+		if !reservation.Cancelled {
 			if start < reservation.End && end > reservation.Start {
 				return Reservation{}, fmt.Errorf("book room: slot %d-%d conflicts with existing reservation: %s %w", start, end, reservation.ID, ErrConflict)
 			}
 		}
 	}
 	newUuid := uuid.New().String()
-	s.reservationOrder = append(s.reservationOrder, newUuid)
-	s.reservations[newUuid] = Reservation{newUuid, roomID, start, end, false}
+	newReservation := Reservation{ID: newUuid, RoomID: roomID, Start: start, End: end, Cancelled: false}
 
-	return s.reservations[newUuid], nil
+	err = s.reservations.Save(newReservation)
+	if err != nil {
+		return Reservation{}, fmt.Errorf("book 123 room: %w", err)
+	}
+
+	return newReservation, nil
 }
+
 func (s *Service) Cancel(reservationID string) error {
 	reservationID = strings.TrimSpace(reservationID)
 	if reservationID == "" {
 		return fmt.Errorf("cancel: reservation id required: %w", ErrInvalid)
 	}
-	if _, exist := s.reservations[reservationID]; !exist {
-		return fmt.Errorf("cancel: reservation %s not found: %w", reservationID, ErrNotFound)
+	reservation, err := s.reservations.Get(reservationID)
+	if err != nil {
+		return fmt.Errorf("cancel: get reservation %s: %w", reservationID, err)
 	}
-	if s.reservations[reservationID].Cancelled {
-		return fmt.Errorf("cancel: reservation %s all ready canceled %w", reservationID, ErrCancelled)
+	if reservation.Cancelled {
+		return fmt.Errorf("cancel: reservation %s all ready canceled: %w", reservationID, ErrCancelled)
 	}
-	res := s.reservations[reservationID]
-	res.Cancelled = true
-	s.reservations[reservationID] = res
+	reservation.Cancelled = true
+	err = s.reservations.Save(reservation)
+	if err != nil {
+		return fmt.Errorf("cancel: save reservation %s: %w", reservationID, err)
+	}
 	return nil
 }
 
@@ -99,26 +127,26 @@ func (s *Service) Get(reservationID string) (Reservation, error) {
 	if reservationID == "" {
 		return Reservation{}, fmt.Errorf("get: reservation id required: %w", ErrInvalid)
 	}
-	if _, exist := s.reservations[reservationID]; !exist {
-		return Reservation{}, fmt.Errorf("get: reservation %s not found: %w", reservationID, ErrNotFound)
+
+	reservation, err := s.reservations.Get(reservationID)
+	if err != nil {
+		return Reservation{}, fmt.Errorf("get: reservation %s: %w", reservationID, err)
 	}
 
-	return s.reservations[reservationID], nil
+	return reservation, nil
 }
 func (s *Service) ListRoom(roomID string) ([]Reservation, error) {
 	roomID = strings.TrimSpace(roomID)
 	if roomID == "" {
 		return []Reservation{}, fmt.Errorf("listRoom: room id required: %w", ErrInvalid)
 	}
-	if _, exist := s.rooms[roomID]; !exist {
-		return []Reservation{}, fmt.Errorf("listRoom: room with id %s not found: %w", roomID, ErrNotFound)
+	if _, err := s.rooms.GetRoom(roomID); err != nil {
+		return []Reservation{}, fmt.Errorf("list room: get room %s: %w", roomID, err)
 	}
-	out := make([]Reservation, 0, len(s.reservations))
-	for _, id := range s.reservationOrder {
-		reservation := s.reservations[id]
-		if reservation.RoomID == roomID {
-			out = append(out, reservation)
-		}
+	reservationList, err := s.reservations.ListByRoom(roomID)
+	if err != nil {
+		return []Reservation{}, fmt.Errorf("listRoom: list room %s: %w", roomID, err)
 	}
-	return out, nil
+
+	return reservationList, nil
 }

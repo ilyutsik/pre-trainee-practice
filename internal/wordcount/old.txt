@@ -1,0 +1,16 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/ilyutsik/pre-trainee-practice/internal/wordcount
+cpu: Apple M2
+BenchmarkTokens-8   	    3280	    365486 ns/op	  180537 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3306	    363078 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3297	    363898 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3310	    363622 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3306	    363113 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3301	    362968 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3308	    363241 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3300	    362921 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3300	    363182 ns/op	  180536 B/op	    6354 allocs/op
+BenchmarkTokens-8   	    3307	    363912 ns/op	  180536 B/op	    6354 allocs/op
+PASS
+ok  	github.com/ilyutsik/pre-trainee-practice/internal/wordcount	13.435s

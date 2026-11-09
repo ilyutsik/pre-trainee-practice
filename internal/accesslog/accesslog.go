@@ -2,6 +2,7 @@ package accesslog
 
 import (
 	"cmp"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ func ParseLine(s string) (Line, bool) {
 	if s[0] == '#' {
 		return Line{}, false
 	}
-
+	s, _, _ = strings.Cut(s, "\n")
 	params := strings.Split(s, " ")
 
 	if len(params) != 5 {
@@ -126,10 +127,10 @@ func Summarize(text string, topN int) Summary {
 	return summary
 }
 
-func runeSliceToInt(slice []rune) int {
-	res := 0
-	for _, r := range slice {
-		res = res*10 + int(r-'0')
-	}
-	return res
+func (s1 Summary) Equal(s2 Summary) bool {
+	return s1.Parsed == s2.Parsed &&
+		s1.Skipped == s2.Skipped &&
+		s1.UniqueIPs == s2.UniqueIPs &&
+		slices.Equal(s1.TopPaths, s2.TopPaths) &&
+		maps.Equal(s1.ByStatus, s2.ByStatus)
 }

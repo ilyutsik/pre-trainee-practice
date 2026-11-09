@@ -13,24 +13,36 @@ type Pair struct {
 }
 
 func Tokens(s string) []string {
-	out := make([]string, 0, len(s))
-	tempSlice := make([]rune, 0, 15)
+	out := make([]string, 0, len(s)/6)
+	start := -1
+	hasUpper := false
 
-	flush := func() {
-		if len(tempSlice) > 0 {
-			out = append(out, strings.ToLower(string(tempSlice)))
-			tempSlice = tempSlice[:0]
+	flush := func(end int) {
+		if start < 0 {
+			return
 		}
+		w := s[start:end]
+		if hasUpper {
+			w = strings.ToLower(w)
+		}
+		out = append(out, w)
+		start = -1
+		hasUpper = false
 	}
 
-	for _, v := range s {
+	for i, v := range s {
 		if unicode.IsLetter(v) || unicode.IsDigit(v) {
-			tempSlice = append(tempSlice, v)
+			if start < 0 {
+				start = i
+			}
+			if unicode.IsUpper(v) {
+				hasUpper = true
+			}
 			continue
 		}
-		flush()
+		flush(i)
 	}
-	flush()
+	flush(len(s))
 	return out
 }
 
@@ -107,4 +119,20 @@ func StopWords(stopWordsString string) map[string]struct{} {
 	}
 	flush()
 	return stop
+}
+
+func joinPlus(parts []string) string {
+	out := ""
+	for _, part := range parts {
+		out += part
+	}
+	return out
+}
+
+func joinBuilder(parts []string) string {
+	var out strings.Builder
+	for _, part := range parts {
+		out.WriteString(part)
+	}
+	return out.String()
 }

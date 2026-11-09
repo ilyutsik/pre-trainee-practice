@@ -1,0 +1,240 @@
+IoC vs DI: IoC (Inversion of Control) is a principle where the container (like Spring) controls the creation and lifecycle of objects instead of the application code. DI (Dependency Injection) is a way to implement IoC. It means that dependencies are provided to a class from outside (constructor, setter, or field). So, IoC is the idea, and DI is the way Spring implements it. This allows easier testing, loose coupling, and better management of dependencies.
+Singleton storage: Spring stores singleton beans in a 3-level cache inside DefaultSingletonBeanRegistry. Level 1: singletonObjects – fully initialized beans. Level 2: earlySingletonObjects – early references used for resolving circular dependencies. Level 3: singletonFactories – ObjectFactory objects that can create early references or proxies. This mechanism ensures that circular dependencies are handled safely.
+Map used for cache: Spring uses ConcurrentHashMap for all three singleton caches. This ensures thread safety and good performance in multi-threaded applications.
+BeanFactory vs ApplicationContext: BeanFactory is the basic Spring container that supports dependency injection and lazy initialization. ApplicationContext extends BeanFactory and adds many features: automatic registration of BeanPostProcessors, AOP support, event publishing (observer pattern), internationalization (MessageSource), environment abstraction, annotation-based configuration, and resource loading. In practice, ApplicationContext is almost always used because of these extra features.
+BeanPostProcessor vs BeanFactoryPostProcessor: BeanFactoryPostProcessor works before beans are created. It can modify bean definitions (metadata), but it cannot access actual bean instances. BeanPostProcessor works after the bean is created and can modify or wrap the bean instance (for example, to create proxies for @Transactional or @Async). Key difference: one works with metadata, the other works with objects.
+BeanPostProcessor: BeanPostProcessor is an interface that allows adding logic before and after bean initialization. It has two methods: postProcessBeforeInitialization and postProcessAfterInitialization. Spring has many implementations internally, like AutowiredAnnotationBeanPostProcessor, CommonAnnotationBeanPostProcessor, and AnnotationAwareAspectJAutoProxyCreator. These are used for dependency injection, AOP, transactions, and other Spring features.
+Bean scopes: Spring supports several scopes. Singleton (default) – one bean per container. Prototype – new instance every time requested. Request – one bean per HTTP request. Session – one bean per HTTP session. Application – one bean per ServletContext. WebSocket – one bean per WebSocket session. Singleton scope is the most common, prototype is used for beans that must not be shared.
+Custom scope: You can create a custom scope by implementing the Scope interface and registering it via ConfigurableBeanFactory.registerScope(). This allows defining custom lifecycles, for example thread scope, tenant scope in multi-tenant applications, or other rules you need.
+Prototype in Singleton (@Lookup, proxy, ObjectProvider): If a singleton injects a prototype directly, Spring will create the prototype only once at startup. To get a new instance each time, you can use @Lookup (Spring overrides the method via CGLIB to return a new instance), ObjectProvider.getObject(), or @Scope(value = "prototype", proxyMode = TARGET_CLASS) which injects a proxy that provides a new bean each call.
+Refresh scope: @RefreshScope (from Spring Cloud) allows a bean to be refreshed at runtime without restarting the app. Spring wraps the bean in a proxy. When refresh is triggered (for example via /actuator/refresh), the old bean is discarded and a new instance is created with updated configuration properties. This is mainly used for dynamic configuration updates.
+@Component vs @Repository vs @Service vs @Controller: All are stereotypes based on @Component and register beans in Spring. The difference is mostly semantic and functional. @Repository adds automatic translation of persistence exceptions into Spring’s DataAccessException. @Service marks a business logic class. @Controller is used in Spring MVC for handling web requests. Exception wrapping provides a consistent exception hierarchy, so your code does not depend on the database implementation.
+@Lazy: @Lazy delays bean creation until it is first requested instead of creating it at startup. Spring injects a proxy, and the real bean is created when a method is first called. This helps reduce startup time and solve circular dependencies. You can use @Lazy on a class or on a specific injection point.
+@Transactional (proxy, propagation, rollback rules): @Transactional works via AOP proxies (JDK dynamic proxy if an interface exists, otherwise CGLIB subclass). The proxy starts a transaction before method execution and commits or rolls back after. By default, rollback occurs for RuntimeException and Error, not checked exceptions unless rollbackFor is set. Propagation defines how transactions interact: REQUIRED (default), REQUIRES_NEW, SUPPORTS, NOT_SUPPORTED, MANDATORY, NEVER, NESTED. Propagation controls behavior when one transactional method calls another.
+Self-invocation problem with @Transactional: If a method inside a class calls another @Transactional method in the same class, the call bypasses the proxy, so no transaction is applied. To fix this, move the called method to another bean or inject the proxied version of the same bean into itself.
+Spring proxies: JDK dynamic vs CGLIB: JDK dynamic proxies can only proxy interfaces, CGLIB creates a subclass of the target class and can proxy classes without interfaces. CGLIB cannot proxy final classes or final methods. CGLIB is not “better,” it is used only when no interface is available. Spring chooses JDK proxy by default if an interface exists.
+Spring design patterns used: Spring uses many design patterns: Singleton (bean scope), Factory (BeanFactory), Proxy (AOP, transactions), Observer (event system), Template Method (JdbcTemplate), Builder (BeanDefinitionBuilder), Strategy (transaction managers, view resolvers), and MVC pattern in Spring Web. These patterns are used internally to organize the framework efficiently.
+Spring Boot auto-configuration (@ConditionalOnClass, @ConditionalOnProperty): Spring Boot auto-configuration: It automatically creates and configures beans based on the classpath, existing beans, and application properties. It uses @EnableAutoConfiguration with many conditional annotations: @ConditionalOnClass (if a class exists), @ConditionalOnMissingClass (if a class does not exist), @ConditionalOnBean / @ConditionalOnMissingBean (if a bean exists or not), @ConditionalOnProperty (if a property has a value), @ConditionalOnWebApplication (for web apps), and others. This allows Spring Boot to set up features like web server, JPA, data sources automatically but does not override your custom beans.
+@SpringBootApplication annotations: @SpringBootApplication combines three annotations: @Configuration (marks the class as configuration), @EnableAutoConfiguration (enables auto-configuration), and @ComponentScan (scans for Spring components in the package). This single annotation is used to bootstrap a Spring Boot application.
+Spring Data: Spring Data simplifies data access by providing repository abstractions over different databases (like JPA, MongoDB). It removes boilerplate DAO code by generating repository implementations at runtime. You define an interface, extend JpaRepository or similar, and Spring Data provides the implementation automatically.
+Spring Data query from method names: Spring Data parses repository method names and builds queries automatically. For example, findByNameAndAgeGreaterThan is parsed into conditions (name = ?, age > ?) based on entity fields. Internally, Spring uses a proxy and QueryLookupStrategy to generate JPQL or SQL at runtime.
+IoC vs DI: IoC (Inversion of Control) is a principle where the container (like Spring) controls the creation and lifecycle of objects instead of the application code. DI (Dependency Injection) is a way to implement IoC. It means that dependencies are provided to a class from outside (constructor, setter, or field). So, IoC is the idea, and DI is the way Spring implements it. This allows easier testing, loose coupling, and better management of dependencies.
+Singleton storage: Spring stores singleton beans in a 3-level cache inside DefaultSingletonBeanRegistry. Level 1: singletonObjects – fully initialized beans. Level 2: earlySingletonObjects – early references used for resolving circular dependencies. Level 3: singletonFactories – ObjectFactory objects that can create early references or proxies. This mechanism ensures that circular dependencies are handled safely.
+Map used for cache: Spring uses ConcurrentHashMap for all three singleton caches. This ensures thread safety and good performance in multi-threaded applications.
+BeanFactory vs ApplicationContext: BeanFactory is the basic Spring container that supports dependency injection and lazy initialization. ApplicationContext extends BeanFactory and adds many features: automatic registration of BeanPostProcessors, AOP support, event publishing (observer pattern), internationalization (MessageSource), environment abstraction, annotation-based configuration, and resource loading. In practice, ApplicationContext is almost always used because of these extra features.
+BeanPostProcessor vs BeanFactoryPostProcessor: BeanFactoryPostProcessor works before beans are created. It can modify bean definitions (metadata), but it cannot access actual bean instances. BeanPostProcessor works after the bean is created and can modify or wrap the bean instance (for example, to create proxies for @Transactional or @Async). Key difference: one works with metadata, the other works with objects.
+BeanPostProcessor: BeanPostProcessor is an interface that allows adding logic before and after bean initialization. It has two methods: postProcessBeforeInitialization and postProcessAfterInitialization. Spring has many implementations internally, like AutowiredAnnotationBeanPostProcessor, CommonAnnotationBeanPostProcessor, and AnnotationAwareAspectJAutoProxyCreator. These are used for dependency injection, AOP, transactions, and other Spring features.
+Bean scopes: Spring supports several scopes. Singleton (default) – one bean per container. Prototype – new instance every time requested. Request – one bean per HTTP request. Session – one bean per HTTP session. Application – one bean per ServletContext. WebSocket – one bean per WebSocket session. Singleton scope is the most common, prototype is used for beans that must not be shared.
+Custom scope: You can create a custom scope by implementing the Scope interface and registering it via ConfigurableBeanFactory.registerScope(). This allows defining custom lifecycles, for example thread scope, tenant scope in multi-tenant applications, or other rules you need.
+Prototype in Singleton (@Lookup, proxy, ObjectProvider): If a singleton injects a prototype directly, Spring will create the prototype only once at startup. To get a new instance each time, you can use @Lookup (Spring overrides the method via CGLIB to return a new instance), ObjectProvider.getObject(), or @Scope(value = "prototype", proxyMode = TARGET_CLASS) which injects a proxy that provides a new bean each call.
+Refresh scope: @RefreshScope (from Spring Cloud) allows a bean to be refreshed at runtime without restarting the app. Spring wraps the bean in a proxy. When refresh is triggered (for example via /actuator/refresh), the old bean is discarded and a new instance is created with updated configuration properties. This is mainly used for dynamic configuration updates.
+@Component vs @Repository vs @Service vs @Controller: All are stereotypes based on @Component and register beans in Spring. The difference is mostly semantic and functional. @Repository adds automatic translation of persistence exceptions into Spring’s DataAccessException. @Service marks a business logic class. @Controller is used in Spring MVC for handling web requests. Exception wrapping provides a consistent exception hierarchy, so your code does not depend on the database implementation.
+@Lazy: @Lazy delays bean creation until it is first requested instead of creating it at startup. Spring injects a proxy, and the real bean is created when a method is first called. This helps reduce startup time and solve circular dependencies. You can use @Lazy on a class or on a specific injection point.
+@Transactional (proxy, propagation, rollback rules): @Transactional works via AOP proxies (JDK dynamic proxy if an interface exists, otherwise CGLIB subclass). The proxy starts a transaction before method execution and commits or rolls back after. By default, rollback occurs for RuntimeException and Error, not checked exceptions unless rollbackFor is set. Propagation defines how transactions interact: REQUIRED (default), REQUIRES_NEW, SUPPORTS, NOT_SUPPORTED, MANDATORY, NEVER, NESTED. Propagation controls behavior when one transactional method calls another.
+Self-invocation problem with @Transactional: If a method inside a class calls another @Transactional method in the same class, the call bypasses the proxy, so no transaction is applied. To fix this, move the called method to another bean or inject the proxied version of the same bean into itself.
+Spring proxies: JDK dynamic vs CGLIB: JDK dynamic proxies can only proxy interfaces, CGLIB creates a subclass of the target class and can proxy classes without interfaces. CGLIB cannot proxy final classes or final methods. CGLIB is not “better,” it is used only when no interface is available. Spring chooses JDK proxy by default if an interface exists.
+Spring design patterns used: Spring uses many design patterns: Singleton (bean scope), Factory (BeanFactory), Proxy (AOP, transactions), Observer (event system), Template Method (JdbcTemplate), Builder (BeanDefinitionBuilder), Strategy (transaction managers, view resolvers), and MVC pattern in Spring Web. These patterns are used internally to organize the framework efficiently.
+Spring Boot auto-configuration (@ConditionalOnClass, @ConditionalOnProperty): Spring Boot auto-configuration: It automatically creates and configures beans based on the classpath, existing beans, and application properties. It uses @EnableAutoConfiguration with many conditional annotations: @ConditionalOnClass (if a class exists), @ConditionalOnMissingClass (if a class does not exist), @ConditionalOnBean / @ConditionalOnMissingBean (if a bean exists or not), @ConditionalOnProperty (if a property has a value), @ConditionalOnWebApplication (for web apps), and others. This allows Spring Boot to set up features like web server, JPA, data sources automatically but does not override your custom beans.
+@SpringBootApplication annotations: @SpringBootApplication combines three annotations: @Configuration (marks the class as configuration), @EnableAutoConfiguration (enables auto-configuration), and @ComponentScan (scans for Spring components in the package). This single annotation is used to bootstrap a Spring Boot application.
+Spring Data: Spring Data simplifies data access by providing repository abstractions over different databases (like JPA, MongoDB). It removes boilerplate DAO code by generating repository implementations at runtime. You define an interface, extend JpaRepository or similar, and Spring Data provides the implementation automatically.
+Spring Data query from method names: Spring Data parses repository method names and builds queries automatically. For example, findByNameAndAgeGreaterThan is parsed into conditions (name = ?, age > ?) based on entity fields. Internally, Spring uses a proxy and QueryLookupStrategy to generate JPQL or SQL at runtime.
+
+————————————————————————————————————————
+
+Why @PostConstruct: @PostConstruct is used to run initialization code after the bean is created and dependencies are injected. It ensures the bean is fully ready before use, for example to set up connections or validate properties.
+@Scope: @Scope defines the lifecycle of a Spring bean. Common scopes: singleton (default, one per container), prototype (new instance each time), request (per HTTP request), session (per HTTP session), application (per ServletContext).
+ObjectProvider: ObjectProvider is a lightweight Spring wrapper for a bean. It allows lazy retrieval and repeated access to prototype or optional beans using getObject(), without creating them immediately at injection time.
+
+————————————————————————————————————————
+
+CoR (Chain of Responsibility): CoR is a design pattern where a request passes through a chain of handlers. Each handler can process it or pass it to the next. In Spring, it’s often used in filters, interceptors, or event handling.
+REST vs gRPC: REST usually uses HTTP/1.1 and JSON for data. It is text-based, easy to read, and widely supported by browsers and clients. gRPC uses HTTP/2 and Protocol Buffers (binary format), which makes it faster, smaller, and more efficient. HTTP/2 in gRPC also supports streaming, so the client and server can send multiple messages in one connection. REST has no strict contract, while gRPC uses .proto files to define the exact service and message structure, which reduces errors. REST is good for public APIs or simple services, while gRPC is better for internal microservices, high performance, streaming, or strict contracts.
+When choose SOAP over REST: Use SOAP for enterprise apps that need strict contracts, built-in security (WS-Security), transactions, or reliable messaging. SOAP is better for legacy systems or where formal standards are required.
+REST stateless principle: RESTful services are stateless, meaning the server does not store client session information. Each request contains all needed data, so servers can scale easily and handle requests independently.
+HTTP vs HTTPS: HTTP is plain text and not secure. HTTPS uses TLS/SSL to encrypt communication, protecting data integrity, confidentiality, and authentication of the server.
+Idempotency in HTTP methods: Idempotent methods produce the same result no matter how many times they are called. Examples: GET, PUT, DELETE. Non-idempotent: POST. It helps safely retry requests.
+DispatcherServlet in Spring MVC: DispatcherServlet is the front controller. It receives all HTTP requests, finds the matching controller, invokes it, and returns the response via view resolvers. It coordinates the whole Spring MVC flow.
+Authentication vs Authorization: Authentication is verifying who a user is (login, credentials). Authorization is checking what a user is allowed to do (roles, permissions). You can be authenticated but not authorized.
+Spring Security flow: Every HTTP request first goes through the Security Filter Chain. Filters check authentication (like login, token, session) and create an Authentication object stored in SecurityContextHolder. Then Spring checks authorization (roles, permissions). If access is allowed, the request goes to the controller; if not, Spring returns 403 Forbidden.
+
+JWT components: JWT has three parts: Header (algorithm and token type), Payload (claims/data), Signature (to verify integrity). Encoded as base64url and separated by dots.
+OAuth vs OIDC: OAuth 2.0 is an authorization framework. It allows a client application to access a user’s protected resources without knowing the user’s password. The user is redirected to the Authorization Server, logs in there, and sees a consent screen where they approve what data the application can access. After consent, the Authorization Server issues an access token, which the client uses to call the Resource Server. Access tokens are usually short-lived, and a refresh token can be used to obtain a new access token without asking the user to log in again. The client must be registered with the Authorization Server and communicates with it securely over HTTPS.
+OpenID Connect (OIDC) is an identity layer built on top of OAuth 2.0. It uses the same flow but adds an ID token. The ID token is a signed JWT that contains information about the authenticated user. This allows the client not only to access resources, but also to verify who the user is.
+In short, OAuth is about authorization (what the application can access), while OIDC adds authentication (who the user is).
+TDD workflow: TDD = Test-Driven Development. Workflow:
+Red: Write a small, specific test for a new function and run it; the test must fail because the feature isn't implemented.
+Green: Write just enough code to make the test pass, even if it is not perfect.
+Refactor: Clean up the newly written code, improve structure, and remove redundancy while ensuring tests still pass.
+Repeat: Continue this cycle for each new feature or requirement
+Testing pyramid: The pyramid shows test strategy: many unit tests at the base, fewer integration tests in the middle, and few UI/end-to-end tests at the top. Unit tests are fast, e2e are slow and expensive.
+CI vs CD: CI (Continuous Integration) means frequently merging code and automatically testing it. CD (Continuous Delivery/Deployment) means automatically delivering or deploying tested code to production. CI ensures quality, CD ensures fast release.
+
+### Message Brokers (Kafka & RabbitMQ)
+
+How to maintain message ordering: to maintain message ordering, you need to:
+Send related messages to the same partition (in Kafka, use the same key for messages).
+Use a single processing stream on the consumer side so messages are processed in order.
+In RabbitMQ, you can use one queue for sequential message processing.
+This ensures that messages are handled in the same order they were sent.
+Back pressure: is a flow-control mechanism that prevents system overload. When a consumer cannot process incoming data as fast as the producer sends it, the system tells the producer to slow down or pause sending. This helps avoid data loss, buffer overflow, and performance problems.
+
+How does RabbitMQ handle a message: RabbitMQ handles a message like this: a producer sends a message to an exchange. The exchange sends it to a queue. The message stays in the queue until a consumer takes it. The consumer processes the message and sends an acknowledgement. After that, the message is removed from the queue.
+
+How does Apache Kafka handle a message after it is consumed: In Apache Kafka, a message is not deleted after a consumer reads it. The message stays in the topic for some time. The consumer just remembers the position (offset) of the messages it has read. Because of this, other consumers can read the same message.
+
+What is a Kafka topic: A Kafka topic is a place where messages are sent and stored. Producers send messages to the topic, and consumers read them from it. A topic can be divided into parts (partitions) for easier and faster data processing.
+
+What is a Kafka partition: A Kafka partition is a part of a topic. Messages inside a partition are stored in order. A partition is used to distribute data and process it in parallel by different consumers.
+
+How do partitions help Kafka scale: Partitions help Kafka scale because data is split into parts and can be processed in parallel. Each partition can be on different servers and handled by different consumers. This increases speed and allows the system to work with large amounts of data.
+
+What does the "At-most-once" delivery guarantee mean in Kafka: “At-most-once” means a message is delivered at most one time or not delivered at all. Messages are not repeated, but there is a risk of losing them.
+To achieve this in Kafka, you turn off consumer acknowledgements and do not resend messages if there is a failure. The producer sends the message only once, and network problems or failures can make the message lost.
+What does the "At-least-once" delivery guarantee mean in Kafka: “At-least-once” means every message will be delivered at least one time. A message can be delivered more than once, but it will not be lost.
+To achieve this in Kafka, the producer uses write acknowledgements (acks) and resends messages if there is a failure. The consumer sends an acknowledgement after processing the message so Kafka can resend it if no acknowledgement comes.
+What does the "Exactly-once" delivery guarantee require to configure: “Exactly-once” means every message is delivered exactly one time — it is not lost and not repeated.
+To configure this in Kafka, you need to enable producer idempotence (enable.idempotence=true) and use transactions when sending messages. This allows the producer and consumer to make sure each message is processed and stored exactly once, even if failures or retries happen.
+What does the acks setting control in a Kafka producer: The acks setting in a Kafka producer controls how many confirmations from brokers are needed before a message is considered successfully sent.
+acks=0 — the producer does not wait for confirmation, the message can be lost.
+acks=1 — the producer waits for confirmation from one broker, there is a small risk of loss.
+acks=all or acks=-1 — the producer waits for confirmation from all replicas, this is the safest option and reduces the risk of message loss.
+
+Instead of sending messages directly to queues, how does RabbitMQ route messages from producers to consumers: In RabbitMQ, a producer does not send messages directly to a queue. First, the message goes to an exchange. The exchange decides which queue or queues to send the message to, using routing rules (bindings) and the type of exchange (direct, fanout, topic, or headers). Then the message goes to the queue, where the consumer takes it.
+
+In Kafka, what is the role of a leader and a follower in a partition replica set: In Kafka, each partition can have several replicas for reliability. One replica is the leader, and the others are followers.
+The leader handles all writes and reads for this partition.
+Followers just copy data from the leader to have an up-to-date backup. If the leader fails, one follower becomes the new leader.
+This makes the system reliable and scalable.
+How can a Kafka producer ensure that related events are processed in the exact order they occurred: To make sure a Kafka producer keeps related events in the exact order, all these events should go to the same partition. Kafka keeps messages in order inside a partition. Usually, the same message key is used, so all events with the same key go to the same partition.
+
+Explain the difference between Kafka Connect and Kafka Streams in terms of their primary use cases: Kafka Connect and Kafka Streams have different purposes:
+Kafka Connect is used to move data between Kafka and other systems (databases, files, cloud services) without writing code. It reads and writes data automatically.
+Kafka Streams is used to process and analyze data streams that are already in Kafka. You can filter, join, aggregate, and transform data in real time.
+
+
+
+### Kubernetes & Continuous Delivery (CI/CD)
+
+
+What is the smallest deployable unit in Kubernetes: In Kubernetes, the smallest deployable unit is a Pod. A Pod can have one or more containers, which always run together on the same node and share resources like network and storage.
+
+What Kubernetes object is used to manage ReplicaSets and provide declarative updates: In Kubernetes, the object used to manage ReplicaSets and provide declarative updates is a Deployment. A Deployment lets you create, update, and scale ReplicaSets, making sure the right number of Pods is always running and updated safely.
+
+What is the general purpose of a Kubernetes probe: In Kubernetes, a probe is used to check the health of a container. A probe can tell if a container is working correctly (liveness probe) and if it is ready to receive traffic (readiness probe). If the check fails, Kubernetes can restart the container or remove it from the service.
+
+1 What exactly does a livenessProbe check?
+2 What action does the kubelet take if a livenessProbe fails?
+3 What does a readinessProbe check?
+
+1 What a livenessProbe checks: A livenessProbe checks if a container is alive and if the application inside is working. It can detect if the container is frozen or not responding.
+
+2 What kubelet does if livenessProbe fails: If the livenessProbe fails, the kubelet restarts the container to try to make it work again.
+
+3 What a readinessProbe checks: A readinessProbe checks if the container is ready to get traffic. If it fails, the container stays alive, but is removed from services, so no traffic goes to it until it is ready.
+
+
+How does a Blue-Green deployment switch traffic: In a Blue-Green deployment, there are two environments: the current one (Blue) and the new version (Green). The new version is deployed alongside the current one. To switch traffic to the new version, the routing or service is updated to send all requests from Blue to Green. If something goes wrong, traffic can quickly go back to Blue.
+
+How does a Canary deployment roll out a new version: At first, a small percentage of users get the new version, while the rest use the old one. If the new version works well, more users are switched gradually until everyone uses the new version. This helps find errors early and reduces risk.
+
+In GitOps, what acts as the single source of truth: In GitOps, the Git repository is the single source of truth. It stores all system configuration and manifests, and the real system state should match what is in the repository.
+
+Name a popular declarative GitOps continuous delivery tool for Kubernetes: A popular declarative GitOps continuous delivery tool for Kubernetes is Argo CD. It is used to automatically deploy applications to Kubernetes based on configuration from Git.
+
+What type of data is stored in a ConfigMap: A ConfigMap stores configuration data as key-value pairs. This can be strings, application settings, or config files that do not contain sensitive information.
+
+How does a Secret differ from a ConfigMap in terms of how data is stored: A Secret is different from a ConfigMap because data in a Secret is stored in encoded (base64) form and is used for sensitive information (like passwords or tokens). A ConfigMap stores data in plain form and is used for non-sensitive settings.
+
+Within the Kubernetes Control Plane, what is the specific role of etcd: In the Kubernetes Control Plane, etcd is used as a data store. It keeps all cluster state: configurations, information about Pods, services, and other objects. Kubernetes reads and writes data to etcd to know the current state of the system.
+
+Why would a team choose a NodePort service over a ClusterIP service: A team chooses NodePort instead of ClusterIP when they need to access the application from outside the cluster. NodePort opens a port on each node, and the service can be reached using the node IP and port.
+ClusterIP is used only inside the cluster and not have access from outside.
+
+Why is a StatefulSet required for stateful applications, rather than a standard Deployment: A StatefulSet is needed for stateful applications because it gives stable Pod names and stable storage. Each Pod has its own name and its own data volume, which is kept after restart.
+A Deployment does not guarantee order, stable names, or fixed storage, so it is better for stateless applications.
+What is the primary benefit of using a Shadow deployment strategy over Canary or Blue-Green: The main benefit of a Shadow deployment is that the new version gets real traffic, but does not affect users. Requests are copied to the new version, but its responses are not used.
+This allows safe testing of behavior and performance in real conditions without risk for users, unlike Canary or Blue-Green, where users directly use the new version.
+
+### Microservices, Containerization & Testing
+
+What is a monolithic application: A monolithic application is an application where all functions and components are combined into one big code and deployed together. Any change requires rebuilding and restarting the whole application.
+
+What is a microservices architecture: A microservices architecture is an approach where an application is divided into small independent services, each doing one specific function. Services communicate with each other through APIs or messages. This makes it easier to develop, scale, and update parts of the application.
+
+Name benefits of choosing microservices over a monolith: Benefits of microservices compared to a monolith:
+Scalability – each service can be scaled separately.
+Faster updates – changes can be made to one service without restarting the whole application.
+Independent development – teams can work on different services at the same time.
+Fault tolerance – if one service fails, the rest of the system keeps working.
+Technology flexibility – different services can use different languages and databases.
+
+Name benefits of choosing monolith over a microservices:
+Benefits of a monolith compared to microservices:
+Easy to develop – all code is in one place, easier to start a project.
+Easier to test – simpler to test one application than many services.
+Less infrastructure complexity – no need to manage network communication between services.
+Easier to deploy – the whole application is deployed at once, no coordination between services.
+Less communication overhead – no network calls between services.
+
+What is the main role of an API Gateway: The main role of an API Gateway is managing access and routing requests to microservices. It receives all incoming requests from clients, checks authentication and authorization, sends requests to the right services, and can also do caching, logging, and rate limiting.
+
+
+What is a major risk or downside of using an API Gateway: A major risk of using an API Gateway is a single point of failure. If the API Gateway stops working, all requests to microservices will be blocked. Also, it can become a performance bottleneck if it is not scaled properly.
+
+What does the Circuit Breaker pattern monitor: The Circuit Breaker pattern monitors the health of external services or dependencies. It watches for errors or slow responses, and if a service fails often or is too slow, it stops sending requests for some time to protect the system from overload and let the service recover.
+
+How does a Circuit Breaker prevent cascading failures: A Circuit Breaker prevents cascading failures by temporarily stopping requests to a failing service if it fails often or is slow. This prevents the load from spreading to other services and gives the system time to recover. The service is reconnected when it works normally again.
+
+Why do we need the Saga Pattern in microservices: The Saga Pattern is needed in microservices to handle distributed transactions. In microservices, one business process can involve many services, and a normal database transaction does not work. Saga makes sure that if part of the process fails, compensating actions are done to undo changes and keep data consistent.
+
+What happens in a Saga if one of the local transactions fails: If one of the local transactions in a Saga fails, compensating transactions are done for all previous steps. This undoes changes so that data in different services stays consistent and the system does not stay in a wrong state.
+
+What do integration tests verify in an application: Integration tests check that different parts of an application work correctly together. They test how modules, services, or components interact to make sure data and processes go correctly through the whole system.
+
+In a CI/CD pipeline, do integration tests run before or after unit tests: In a CI/CD pipeline, integration tests usually run after unit tests. First, individual modules are checked (unit tests), and then their interaction is tested (integration tests).
+
+What is the primary purpose of caching: The primary purpose of caching is to make data access faster and reduce system load. A cache stores often-used data in fast storage (like memory) so it does not need to be fetched every time from a slower source, like a database or an external service.
+
+Where does an in-memory cache store its data: An in-memory cache stores data in the application’s memory (RAM). This makes data access very fast, but the cache is lost when the application restarts.
+
+What is a major advantage of a distributed cache (like Redis) over an in-memory cache: The main advantage of a distributed cache (like Redis) over an in-memory cache is that it is available to multiple applications or servers at the same time and keeps data even if one application restarts. This allows the system to scale and share the cache between different services.
+
+How does containerization solve the issue of "version conflicts" that occur on traditional servers: Containerization solves the “version conflict” problem because each application runs in its own isolated container with the required dependencies and versions. This means different applications can use different library or language versions on the same machine without conflicts.
+What is a "bounded context" and how does it prevent tangled logic between microservices: A bounded context is a limited area of responsibility for one microservice, where its own data models and business rules are defined. Each microservice works only inside its context, which prevents overlapping and tangled logic between services. This way, changes in one service do not directly affect others.
+
+Because global ACID transactions are not used in microservices, what kind of architecture is used to synchronize data: Because microservices do not use global ACID transactions, they use an event-driven architecture and the Saga pattern to synchronize data. Each service processes its own local transactions and publishes events so other services know about changes and perform their actions.
+
+How does the Strangler Fig pattern facilitate the migration from a monolithic architecture to microservices: The Strangler Fig pattern helps gradually migrate from a monolith to microservices. First, new microservices are created for parts of the functionality, while the old monolith keeps working. Gradually, traffic and functionality are moved to the new services until the monolith is completely replaced. This reduces risk because changes are applied step by step without stopping the whole system.
+
+### NoSQL Databases
+
+What model do SQL databases prioritize for data integrity: SQL databases mainly use the ACID model (Atomicity, Consistency, Isolation, Durability) to ensure data integrity. This guarantees that transactions are completed fully or not at all, data stays consistent, operations are isolated from each other, and changes are saved reliably.
+
+What model do NoSQL databases often favor for flexibility: NoSQL databases often use the BASE model (Basically Available, Soft state, Eventual consistency) for more flexibility and scalability. This allows the system to stay available and handle data quickly, even if data may be slightly inconsistent at some points in time.
+
+What two properties does the BASE model focus on: The BASE model mainly focuses on two properties:
+Availability – the system is always ready to accept requests, even if the data is not fully consistent yet.
+Eventual Consistency – the data will become consistent over time after all updates are applied.
+
+
+What does the "C" stand for in the CAP Theorem?
+What does the "A" stand for in the CAP Theorem?
+What does the "P" stand for in the CAP Theorem?
+
+In the CAP Theorem, each letter shows a key property of a distributed system:
+C (Consistency) – all nodes see the same data at the same time.
+A (Availability) – every request gets a response (success or failure) no matter the system state.
+P (Partition Tolerance) – the system keeps working even if part of the network or nodes are unavailable.
+
+
+What is replication used for in NoSQL: In NoSQL, replication is used to make copies of data on multiple nodes. This increases availability and reliability: if one node fails, the data is still available on other nodes. Replication also helps distribute load between servers.
+
+What is sharding used for in NoSQL: In NoSQL, sharding is used to split data into parts (shards) and put them on different nodes. This allows handling very large amounts of data, improves performance, and makes the system scalable because each node stores only its part of the data.
+
+What data formats do Document databases (like MongoDB) typically use: Document databases (like MongoDB) usually use JSON-like formats to store data, such as JSON or BSON. These formats allow storing structured data with nested objects and arrays, which is good for flexible schemas
+
+Which type of NoSQL database is optimized specifically for handling complex relationships: For handling complex relationships between data, Graph databases are optimized. They store data as nodes and edges, which makes it fast to query connections between objects, for example, in social networks or recommendation systems.
+
+In the PACELC theorem, what trade-off must be made if a network partition does not occur (the "ELC" part): In the PACELC theorem, if a network partition does not occur, the ELC part applies: the system still must balance between Latency and Consistency. This means that even without network failures, you have to choose: either fast responses with possibly less consistency, or strict consistency with more delay.
+
+Why might an application choose eventual consistency (BASE) over strict consistency (ACID): An application might choose eventual consistency (BASE) over strict consistency (ACID) to improve performance and availability. In distributed systems with many nodes and large data, strict ACID consistency can slow things down because of locks and waiting. BASE allows fast processing of requests, even if data is temporarily inconsistent, and consistency is reached over time.

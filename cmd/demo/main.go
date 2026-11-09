@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	testFileProc()
+
 }
 
 func testFileProc() {
@@ -45,7 +45,7 @@ func testBooking() {
 	id2 := "2"
 	id3 := "3"
 	id4 := "4"
-	s := booking.NewService()
+	s := booking.NewMemoryService()
 
 	no1 := s.AddRoom(id1, "Kolomna")
 	no2 := s.AddRoom(id2, "SportTime")
